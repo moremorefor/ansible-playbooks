@@ -8,5 +8,5 @@ $ vagrant up
 ### Provisioning with ansible command
 ```
 $ vagrant ssh-config > ssh.config
-$ ansible-playbook provision.yml
+$ ansible-playbook playbook/sample.yml
 ```
