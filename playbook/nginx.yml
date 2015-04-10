@@ -1,0 +1,45 @@
+---
+- hosts: all
+  tasks:
+    - name: Install yum-priorities
+      sudo: yes
+      yum: name=yum-priorities state=latest
+
+    - name: Set priority to CentOS-Base.repo
+      sudo: yes
+      ini_file: >-
+        dest=/etc/yum.repos.d/CentOS-Base.repo
+        section='{{ item.section }}'
+        option=priority
+        value={{ item.value }}
+      with_items:
+        - section: 'base'
+          value: 1
+        - section: 'updates'
+          value: 2
+        - section: 'extras'
+          value: 2
+        - section: 'centosplus'
+          value: 2
+        - section: 'contrib'
+          value: 2
+
+    - name: Install epel-release
+      sudo: yes
+      yum: name="epel-release" state=latest
+
+    - name: Set enabled to epel.repo
+      sudo: yes
+      ini_file: >-
+        dest=/etc/yum.repos.d/epel.repo
+        section=epel
+        option=enabled
+        value=0
+
+    - name: Install Nginx
+      sudo: yes
+      yum: name=nginx state=latest enablerepo=epel
+
+    - name: Start service nginx, if not running
+      sudo: yes
+      service: name=nginx state=started
