@@ -1,0 +1,68 @@
+---
+  - name: Install yum-priorities
+    sudo: yes
+    yum: name=yum-priorities state=latest
+
+  - name: Set priority to CentOS-Base.repo
+    sudo: yes
+    ini_file: >-
+      dest=/etc/yum.repos.d/CentOS-Base.repo
+      section='{{ item.section }}'
+      option=priority
+      value={{ item.value }}
+    with_items:
+      - section: 'base'
+        value: 1
+      - section: 'updates'
+        value: 2
+      - section: 'extras'
+        value: 2
+      - section: 'centosplus'
+        value: 2
+      - section: 'contrib'
+        value: 2
+
+  - name: Install epel-release
+    sudo: yes
+    yum: name="epel-release" state=latest
+
+  - name: Set enabled to epel.repo
+    sudo: yes
+    ini_file: >-
+      dest=/etc/yum.repos.d/epel.repo
+      section=epel
+      option=enabled
+      value=0
+
+  - name: Install Nginx
+    sudo: yes
+    yum: name=nginx state=latest enablerepo=epel
+
+  - name: Check if selinux is installed
+    sudo: yes
+    command: getenforce
+    register: getenforce_result
+    ignore_errors: True
+
+  - name: Install libselinux-python
+    sudo: yes
+    yum: name="libselinux-python" state=latest
+    when: getenforce_result|success and getenforce_result.stdout != 'Disabled'
+
+  - name: Copy nginx configuration
+    sudo: yes
+    template: src=nginx.conf dest=/etc/nginx.conf mode=0644
+
+  - name: Stat default.conf
+    stat: path=/etc/nginx/conf.d/default.conf
+    register: default_config_stat
+
+  - name: Backup default.conf
+    sudo: yes
+    command: mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.orig
+    when: default_config_stat.stat.exists
+
+  - name: Copy flask.conf
+    sudo: yes
+    template: src=flask.conf dest=/etc/nginx/conf.d/flask.conf mode=0644
+    notify: Restart nginx

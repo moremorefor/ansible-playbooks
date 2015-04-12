@@ -1,0 +1,7 @@
+---
+- name: Setup Flask application environment
+  hosts: web-servers
+
+  roles:
+    - python
+    - nginx
