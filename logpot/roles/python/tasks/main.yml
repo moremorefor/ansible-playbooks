@@ -1,0 +1,69 @@
+---
+  - name: Update CentOS system
+    become: true
+    yum: name=* state=latest
+
+  - name: Install development tools
+    become: true
+    yum: name="@Development tools" state=present
+
+  - name: Install additional dev tools
+    become: true
+    yum: pkg={{item}} state=latest
+    with_items:
+      - zlib-devel
+      - openssl-devel
+      - sqlite-devel
+      - bzip2-devel
+      - xz-libs
+      - httpd-tools
+
+  - name: Check whether python is installed
+    command: python3 -V
+    ignore_errors: True
+    register: python_is_installed
+    changed_when: python_is_installed.rc != 0
+
+  - name: Creates tmp directory
+    become: true
+    file: path=/var/tmp/python state=directory
+    when: python_is_installed|failed
+
+  - name: Download Python 3.4.2
+    become: true
+    get_url: url="https://www.python.org/ftp/python/3.4.2/Python-3.4.2.tar.xz" dest=/var/tmp/python
+    when: python_is_installed|failed
+
+  - name: Unarchive Python
+    become: true
+    unarchive: src=/var/tmp/python/Python-3.4.2.tar.xz dest=/var/tmp/python copy=no
+    when: python_is_installed|failed
+
+  - name: Configure Python
+    become: true
+    command: ./configure --prefix=/opt/python3.4.2 chdir=/var/tmp/python/Python-3.4.2
+    when: python_is_installed|failed
+
+  - name: Build and install Python
+    become: true
+    shell: make && make altinstall chdir=/var/tmp/python/Python-3.4.2
+    when: python_is_installed|failed
+
+  - name: Create default python environment
+    shell: '{{ item }}'
+    with_items:
+      - cd ~/
+      - /opt/python3.4.2/bin/pyvenv-3.4 py3.4
+      - echo 'PATH=~/py3.4/bin:$PATH' >> ~/.bashrc
+      - source ~/.bashrc
+    when: python_is_installed|failed
+
+  - name: Install virtualenvwrapper
+    shell: '{{ item }}'
+    with_items:
+      - pip install virtualenvwrapper
+      - mkdir ~/venvs
+      - echo -e '\n# virtualenvwrapper\nWORKON_HOME=~/venvs' >> ~/.bashrc
+      - echo '. ~/py3.4/bin/virtualenvwrapper.sh' >> ~/.bashrc
+      - source ~/.bashrc
+    when: python_is_installed|failed

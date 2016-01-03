@@ -1,0 +1,43 @@
+---
+  - name: Check whether Ruby is installed
+    command: ruby -v
+    ignore_errors: True
+    register: ruby_is_installed
+    changed_when: ruby_is_installed.rc != 0
+
+  - name: Install rbenv
+    git: >-
+      repo=https://github.com/sstephenson/rbenv.git
+      dest=~/.rbenv
+    when: ruby_is_installed|failed
+
+  - name: Install ruby-build
+    git: >-
+      repo=https://github.com/sstephenson/ruby-build.git
+      dest=~/.rbenv/plugins/ruby-build
+    when: ruby_is_installed|failed
+
+  - name: Install readline
+    become: true
+    yum: name=readline-devel state=present
+    when: ruby_is_installed|failed
+
+  - name: Add PATH
+    shell: '{{ item }}'
+    with_items:
+      - echo -e '\n# rbenv\nexport PATH=$HOME/.rbenv/bin:$PATH' >> ~/.bashrc
+      - echo -e 'eval "$(rbenv init -)"' >> ~/.bashrc
+      - source ~/.bashrc
+    when: ruby_is_installed|failed
+
+  - name: Install Ruby ver {{ RUBY_VERSION }}
+    shell: rbenv install {{ RUBY_VERSION }}
+    when: ruby_is_installed|failed
+
+  - name: Rehash rbenv
+    shell: rbenv rehash
+    when: ruby_is_installed|failed
+
+  - name: Use Ruby ver {{ RUBY_VERSION }}
+    shell: rbenv global {{ RUBY_VERSION }}
+    when: ruby_is_installed|failed

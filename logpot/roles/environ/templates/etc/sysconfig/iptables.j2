@@ -1,0 +1,23 @@
+*filter
+:INPUT DROP [16:2075]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [11:3036]
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -s 10.0.0.0/8 -j DROP
+-A INPUT -d 10.0.0.0/8 -j DROP
+-A INPUT -s 172.16.0.0/12 -j DROP
+-A INPUT -d 172.16.0.0/12 -j DROP
+-A INPUT -s 192.168.0.0/16 -j DROP
+-A INPUT -d 192.168.0.0/16 -j DROP
+-A INPUT -d 0.0.0.0/8 -j DROP
+-A INPUT -d 255.255.255.255/32 -j DROP
+-A INPUT -f -j DROP
+-A INPUT -p tcp -m state --state NEW -m tcp ! --tcp-flags FIN,SYN,RST,ACK SYN -j DROP
+-A INPUT -p tcp -m tcp --dport 113 -j REJECT --reject-with tcp-reset
+-A INPUT -p icmp -m icmp --icmp-type 8 -m hashlimit --hashlimit-upto 1/sec --hashlimit-mode srcip --hashlimit-name input_icmp --hashlimit-htable-expire 300000 -j DROP
+-A INPUT -p tcp -m tcp --dport {{ COMMON_SSH_PORT }} -j ACCEPT
+-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+COMMIT

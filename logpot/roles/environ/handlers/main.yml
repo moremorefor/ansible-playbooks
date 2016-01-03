@@ -1,0 +1,12 @@
+---
+- name: Initial etckeeper commit
+  become: true
+  command: etckeeper commit "Initial commit :)"
+
+- name: Restart sshd
+  become: true
+  service: name=sshd state=restarted
+
+- name: Start iptables
+  become: true
+  service: name=iptables pattern=/etc/init.d/iptables state=started

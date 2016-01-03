@@ -1,2 +1,4 @@
 [web-servers]
 dev_server
+
+[all:vars]

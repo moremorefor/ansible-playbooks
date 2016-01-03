@@ -1,0 +1,8 @@
+
+COMMON_USER_NAME: username
+COMMON_USER_PASS: password #(use crypted password: see http://docs.ansible.com/ansible/faq.html#how-do-i-generate-crypted-passwords-for-the-user-module)
+COMMON_SSH_PORT: 0000 # (use private port: 49152 ~ 65535)
+COMMON_SSH_KEY: '~/.ssh/id_rsa.pub'
+
+NODE_VERSION: 0.12.7
+RUBY_VERSION: 2.2.2

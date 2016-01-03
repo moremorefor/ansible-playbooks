@@ -1,0 +1,151 @@
+---
+  - name: Debug
+    shell: whoami
+    register: whoami
+
+  - name: Debug out
+    debug: var=whoami.stdout
+
+  - name: Install yum-priorities
+    become: true
+    yum: name=yum-priorities state=latest
+
+  - name: Set priority to CentOS-Base.repo
+    become: true
+    ini_file: >-
+      dest=/etc/yum.repos.d/CentOS-Base.repo
+      section='{{ item.section }}'
+      option=priority
+      value={{ item.value }}
+    with_items:
+      - section: 'base'
+        value: 1
+      - section: 'updates'
+        value: 1
+      - section: 'extras'
+        value: 1
+      - section: 'centosplus'
+        value: 1
+      - section: 'contrib'
+        value: 1
+
+  - name: Install epel-release
+    become: true
+    yum: name="epel-release" state=latest
+
+  - name: Set enabled to epel.repo
+    become: true
+    ini_file: >-
+      dest=/etc/yum.repos.d/epel.repo
+      section=epel
+      option=enabled
+      value=0
+
+  - name: Set priority to epel.repo
+    become: true
+    ini_file: >-
+      dest=/etc/yum.repos.d/epel.repo
+      section=epel
+      option=priority
+      value=2
+
+  - name: Update CentOS system
+    become: true
+    yum: name=* state=latest
+
+  - name: Install gcc
+    become: true
+    yum: name=gcc state=present
+
+  - name: Check if selinux is installed
+    become: true
+    command: getenforce
+    register: getenforce_result
+    ignore_errors: True
+
+  - name: Install libselinux-python
+    become: true
+    yum: name="libselinux-python" state=latest
+    when: getenforce_result|success and getenforce_result.stdout != 'Disabled'
+
+  - name: Add main user
+    become: true
+    user: >
+      name={{ COMMON_USER_NAME }}
+      groups=wheel
+      password={{ COMMON_USER_PASS }}
+      state=present
+
+  - name: Add etckeeper
+    become: true
+    yum: name=etckeeper state=latest enablerepo=epel
+
+  - name: Copy .gitignore
+    become: true
+    template: src=etc/.gitignore dest=/etc/
+
+  - name: Initialize etckeeper
+    become: true
+    command: etckeeper init creates=/etc/.etckeeper
+    notify: Initial etckeeper commit
+
+  - name: Allow su to wheel group
+    become: true
+    lineinfile: >
+      dest=/etc/pam.d/su
+      backrefs=yes
+      regexp='^#auth\s+required'
+      line='auth           required        pam_wheel.so use_uid'
+      state=present
+
+  - name: Allow sudo to wheel group
+    become: true
+    lineinfile: >
+      dest=/etc/sudoers
+      backrefs=yes
+      regexp='^#\s%wheel.+NOPASSWD:\sALL$'
+      line='%wheel ALL=(ALL) NOPASSWD: ALL'
+      state=present
+
+  - name: Resister a public key
+    become: true
+    authorized_key: >
+      user={{ COMMON_USER_NAME }}
+      key="{{ lookup('file', COMMON_SSH_KEY ) }}"
+
+  - name: Change ssh port & Do not allow root login
+    become: true
+    lineinfile: >
+      dest=/etc/ssh/sshd_config
+      backrefs=yes
+      state=present
+      regexp='{{ item.regexp }}'
+      line='{{ item.line }}'
+    with_items:
+      - regexp: '^#Port 22'
+        line: 'Port {{ COMMON_SSH_PORT }}'
+      - regexp: '#PermitRootLogin yes'
+        line: 'PermitRootLogin no'
+      - regexp: '#PubkeyAuthentication'
+        line: 'PubkeyAuthentication yes'
+      - regexp: 'PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+
+  - name: Allow ssh to user
+    become: true
+    lineinfile: >
+      dest=/etc/ssh/sshd_config
+      state=present
+      regexp='^AllowUsers\s{{ COMMON_USER_NAME }}'
+      insertafter=EOF
+      line='AllowUsers {{ COMMON_USER_NAME }}'
+    notify: Restart sshd
+
+# if you use Vagrant and block private IP address,
+# ssh won't be able to connect a remote host.
+  # - name: Copy iptables
+  #   become: true
+  #   template: >
+  #     dest=/etc/sysconfig/iptables
+  #     src=etc/sysconfig/iptables.j2
+  #   notify: Start iptables

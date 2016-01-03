@@ -1,0 +1,44 @@
+---
+  - name: Check whether nodebrew is installed
+    command: nodebrew -v
+    ignore_errors: True
+    register: nodebrew_is_installed
+    changed_when: nodebrew_is_installed.rc != 0
+
+  - name: Debug out
+    debug: var=nodebrew_is_installed
+    when: nodebrew_is_installed|failed
+
+  - name: Install Perl
+    become: yes
+    yum: name=perl
+    when: nodebrew_is_installed|failed
+
+  - name: Creates tmp directory
+    become: true
+    file: path=/var/tmp/nodebrew state=directory
+    when: nodebrew_is_installed|failed
+
+  - name: Download nodebrew
+    become: true
+    get_url: url="http://git.io/nodebrew" dest=/var/tmp/nodebrew
+    when: nodebrew_is_installed|failed
+
+  - name: Install nodebrew
+    command: perl /var/tmp/nodebrew/nodebrew setup
+    when: nodebrew_is_installed|failed
+
+  - name: Add PATH
+    shell: '{{ item }}'
+    with_items:
+      - echo -e '\n# nodebrew\nexport PATH=$HOME/.nodebrew/current/bin:$PATH' >> ~/.bashrc
+      - source ~/.bashrc
+    when: nodebrew_is_installed|failed
+
+  - name: Install Node.js ver {{ NODE_VERSION }}
+    shell: nodebrew install-binary v{{ NODE_VERSION }}
+    when: nodebrew_is_installed|failed
+
+  - name: Use Node.js ver {{ NODE_VERSION }}
+    shell: nodebrew use v{{ NODE_VERSION }}
+    when: nodebrew_is_installed|failed

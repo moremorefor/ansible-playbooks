@@ -1,0 +1,49 @@
+---
+  - name: Check whether PostgreSQL is installed
+    command: psql --version
+    ignore_errors: True
+    register: postgresql_is_installed
+    changed_when: postgresql_is_installed.rc != 0
+
+  - name: Debug out
+    debug: var=postgresql_is_installed
+    when: postgresql_is_installed|failed
+
+  - name: Install rpm
+    become: true
+    yum: >-
+     name="http://yum.postgresql.org/9.4/redhat/rhel-6-x86_64/pgdg-centos94-9.4-1.noarch.rpm"
+     state=present
+    when: postgresql_is_installed|failed
+
+  - name: Install PostgreSQL server
+    become: true
+    yum: name="postgresql94-server.x86_64" state=present
+    when: postgresql_is_installed|failed
+
+  - name: Install PostgreSQL devel
+    become: true
+    yum: name="postgresql94-devel.x86_64" state=present
+    when: postgresql_is_installed|failed
+
+  - name: Install PostgreSQL contrib
+    become: true
+    yum: name="postgresql94-contrib.x86_64" state=present
+    when: postgresql_is_installed|failed
+
+  - name: Initialize database
+    become: true
+    command: service postgresql-9.4 initdb -E utf8
+    when: postgresql_is_installed|failed
+
+  - name: Add PATH
+    shell: '{{ item }}'
+    with_items:
+      - echo -e '\n# PostgreSQL\nexport PATH=/usr/pgsql-9.4/bin:$PATH' >> ~/.bashrc
+      - source ~/.bashrc
+    when: postgresql_is_installed|failed
+
+  - name: Service start
+    become: true
+    service: name="postgresql-9.4" state="started" enabled=yes
+    when: postgresql_is_installed|failed

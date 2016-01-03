@@ -1,0 +1,10 @@
+---
+- name: Setup Logpot application environment
+  hosts: web-servers
+
+  roles:
+    - nginx
+    - python
+    - node
+    - ruby
+    - postgresql
